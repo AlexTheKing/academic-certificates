@@ -1,0 +1,6 @@
+{
+  "rpc": "http://127.0.0.1:7545",
+  "contract_address": "0x8B165c9Bb5fa176221837Ffed59Ef450AF96E818",
+  "gas_price": 1,
+  "chain_id": 1
+}
