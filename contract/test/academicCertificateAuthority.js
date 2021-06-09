@@ -128,7 +128,7 @@ contract('AcademicCertificateAuthority', () => {
     regulator = (await web3.eth.getAccounts())[1];
 
     promise = contract.issueByRegulator('A123456', 'Ivan Ivanovich Ivanov', '123', 'diploma', 0, 1620768986, 'Minsk, BY', 'Information Technology Software', {'from': regulator});
-    await assertThrows(promise, 'Certificate Release Date must not be empty');
+    await assertThrows(promise, 'Certificate Registration Date must not be empty');
   });
 
   it('...should revert issueByRegulator() - certificate release date is empty', async () => {
@@ -230,13 +230,13 @@ contract('AcademicCertificateAuthority', () => {
   */
 
 
-  it('...should revert cancel() - not a regulator', async () => {
+  it('...should revert cancel() - not a regulator or supervisor', async () => {
     const contract = await AcademicCertificateAuthority.deployed();
 
     not_a_regulator = (await web3.eth.getAccounts())[3];
 
     promise = contract.cancel('A12345', {'from': not_a_regulator});
-    await assertThrows(promise, 'Only regulator is allowed to perform this operation');
+    await assertThrows(promise, 'Only supervisor or regulator are allowed to perform this operation');
   });
 
   it('...should revert cancel() - certificate ID is empty', async () => {
@@ -257,7 +257,16 @@ contract('AcademicCertificateAuthority', () => {
     await assertThrows(promise, 'Certificate with a given ID does not exist');
   });
 
- it('...should cancel a certificate', async () => {
+  it('...should revert cancel() - certificate was not issued by regulator', async () => {
+    const contract = await AcademicCertificateAuthority.deployed();
+
+    regulator = (await web3.eth.getAccounts())[1];
+
+    promise = contract.cancel('A123457', {'from': regulator});
+    await assertThrows(promise, 'Certificate to be cancelled must be issued by your organization');
+  });
+
+  it('...should cancel a certificate by regulator', async () => {
     const contract = await AcademicCertificateAuthority.deployed();
 
     accounts = await web3.eth.getAccounts();
@@ -268,5 +277,51 @@ contract('AcademicCertificateAuthority', () => {
 	  assert.equal(result.logs[0].event, 'Cancellation')
 
 	  certificate = await contract.getCertificateById('A123456', {'from': random_account})
+    assert.equal(certificate.is_cancelled, true);
+  });
+
+  it('...should cancel a certificate by supervisor', async () => {
+    const contract = await AcademicCertificateAuthority.deployed();
+
+    accounts = await web3.eth.getAccounts();
+    random_account = accounts[4];
+
+    result = await contract.cancel('A123457');
+    assert.equal(result.logs[0].event, 'Cancellation')
+
+    certificate = await contract.getCertificateById('A123457', {'from': random_account})
+    assert.equal(certificate.is_cancelled, true);
+  });
+
+  /*
+    REMOVE REGULATOR
+  */
+
+  it('...should revert removeRegulator() - not a supervisor', async () => {
+    const contract = await AcademicCertificateAuthority.deployed();
+
+    accounts = await web3.eth.getAccounts()
+    regulator = accounts[1];
+    not_a_regulator = accounts[4];
+
+    promise = contract.removeRegulator(regulator, {'from': not_a_regulator});
+    await assertThrows(promise, 'Only supervisor is allowed to perform this operation');
+  });
+
+  it('...should revert removeRegulator() - regulator address is empty', async () => {
+    const contract = await AcademicCertificateAuthority.deployed();
+
+    suprvisor = (await web3.eth.getAccounts())[0]
+
+    promise = contract.removeRegulator('0x0000000000000000000000000000000000000000', {'from': supervisor});
+    await assertThrows(promise, 'Regulator Address must not be empty');
+  });
+
+  it('...should remove regulator', async () => {
+    const contract = await AcademicCertificateAuthority.deployed();
+
+    regulator = (await web3.eth.getAccounts())[1];
+
+    await contract.removeRegulator(regulator);
   });
 });

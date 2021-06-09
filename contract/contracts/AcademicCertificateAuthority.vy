@@ -55,6 +55,13 @@ def addRegulator(_regulator: address, _issuer_name: String[48], _issuer_location
 		location: _issuer_location
 	})
 
+@external
+def removeRegulator(_regulator: address):
+	assert msg.sender == self.supervisor, 'Only supervisor is allowed to perform this operation'
+	assert _regulator != empty(address), 'Regulator Address must not be empty'
+	
+	self.regulators[_regulator] = empty(Issuer)
+
 
 @internal
 def validateCertificate(_regulator_name: String[48], _certificate_id: String[16],
@@ -139,9 +146,17 @@ def issueBySupervisor(_certificate_id: String[16], _student_full_name: String[48
 
 @external
 def cancel(_certificate_id: String[16]):
-	assert self.regulators[msg.sender].name != '', 'Only regulator is allowed to perform this operation'
+	regulator: Issuer = self.regulators[msg.sender]
+	is_regulator: bool = regulator.name != ''
+	is_supervisor: bool = self.supervisor == msg.sender
+	assert (is_supervisor or is_regulator), 'Only supervisor or regulator are allowed to perform this operation'
 	assert _certificate_id != '', 'Certificate ID must not be empty'
 	assert self.certificateIdToCertificate[_certificate_id].id != '', 'Certificate with a given ID does not exist'
+
+	certificate: Certificate = self.certificateIdToCertificate[_certificate_id]
+		
+	if is_regulator and not is_supervisor:
+		assert certificate.organization == regulator.name, 'Certificate to be cancelled must be issued by your organization'
 
 	self.certificateIdToCertificate[_certificate_id].is_cancelled = True
 	log Cancellation(_certificate_id)
